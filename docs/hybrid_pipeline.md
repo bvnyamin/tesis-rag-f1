@@ -22,6 +22,18 @@ Esta etapa conecta:
 5. ejecuta la consulta en PostgreSQL
 6. genera una respuesta final usando el resultado SQL y el contexto RAG
 
+## Extension analitica
+
+El pipeline tambien puede responder preguntas comparativas o evolutivas, por
+ejemplo rankings, comparaciones entre pilotos o escuderias, y series por
+temporada.
+
+En esos casos:
+
+1. la intencion heuristica intenta detectar si la pregunta es de ranking o evolucion
+2. el generador SQL recibe una instruccion para devolver varias filas utiles
+3. la reportería intenta construir un resumen analítico y un gráfico simple
+
 ## Ejemplo desde Docker
 
 ```text

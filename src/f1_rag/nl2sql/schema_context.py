@@ -17,7 +17,7 @@ class TableSchemaContext:
 
 
 def get_default_schema_context() -> list[TableSchemaContext]:
-    """Devuelve un resumen curado del esquema minimo de F1 en PostgreSQL."""
+    """Devuelve un resumen curado del esquema estructurado de F1 en PostgreSQL."""
 
     return [
         TableSchemaContext(
@@ -33,7 +33,12 @@ def get_default_schema_context() -> list[TableSchemaContext]:
                 "dob",
                 "nationality",
             ],
-            joins=["results.driver_id = drivers.driver_id"],
+            joins=[
+                "results.driver_id = drivers.driver_id",
+                "qualifying.driver_id = drivers.driver_id",
+                "driver_standings.driver_id = drivers.driver_id",
+                "sprint_results.driver_id = drivers.driver_id",
+            ],
         ),
         TableSchemaContext(
             table_name="constructors",
@@ -44,7 +49,12 @@ def get_default_schema_context() -> list[TableSchemaContext]:
                 "name",
                 "nationality",
             ],
-            joins=["results.constructor_id = constructors.constructor_id"],
+            joins=[
+                "results.constructor_id = constructors.constructor_id",
+                "qualifying.constructor_id = constructors.constructor_id",
+                "constructor_standings.constructor_id = constructors.constructor_id",
+                "sprint_results.constructor_id = constructors.constructor_id",
+            ],
         ),
         TableSchemaContext(
             table_name="circuits",
@@ -76,6 +86,22 @@ def get_default_schema_context() -> list[TableSchemaContext]:
             joins=[
                 "races.circuit_id = circuits.circuit_id",
                 "results.race_id = races.race_id",
+                "qualifying.race_id = races.race_id",
+                "driver_standings.race_id = races.race_id",
+                "constructor_standings.race_id = races.race_id",
+                "sprint_results.race_id = races.race_id",
+            ],
+        ),
+        TableSchemaContext(
+            table_name="status",
+            description="Estados finales de carrera, por ejemplo Finished, Disqualified o accidentes.",
+            columns=[
+                "status_id",
+                "status",
+            ],
+            joins=[
+                "results.status_id = status.status_id",
+                "sprint_results.status_id = status.status_id",
             ],
         ),
         TableSchemaContext(
@@ -103,6 +129,88 @@ def get_default_schema_context() -> list[TableSchemaContext]:
                 "results.race_id = races.race_id",
                 "results.driver_id = drivers.driver_id",
                 "results.constructor_id = constructors.constructor_id",
+                "results.status_id = status.status_id",
+            ],
+        ),
+        TableSchemaContext(
+            table_name="qualifying",
+            description="Resultados de clasificacion, incluyendo posicion de largada y tiempos de Q1, Q2 y Q3.",
+            columns=[
+                "qualify_id",
+                "race_id",
+                "driver_id",
+                "constructor_id",
+                "number",
+                "position",
+                "q1",
+                "q2",
+                "q3",
+            ],
+            joins=[
+                "qualifying.race_id = races.race_id",
+                "qualifying.driver_id = drivers.driver_id",
+                "qualifying.constructor_id = constructors.constructor_id",
+            ],
+        ),
+        TableSchemaContext(
+            table_name="driver_standings",
+            description="Posicion del piloto en el campeonato despues de una carrera especifica.",
+            columns=[
+                "driver_standings_id",
+                "race_id",
+                "driver_id",
+                "points",
+                "position",
+                "position_text",
+                "wins",
+            ],
+            joins=[
+                "driver_standings.race_id = races.race_id",
+                "driver_standings.driver_id = drivers.driver_id",
+            ],
+        ),
+        TableSchemaContext(
+            table_name="constructor_standings",
+            description="Posicion del constructor en el campeonato despues de una carrera especifica.",
+            columns=[
+                "constructor_standings_id",
+                "race_id",
+                "constructor_id",
+                "points",
+                "position",
+                "position_text",
+                "wins",
+            ],
+            joins=[
+                "constructor_standings.race_id = races.race_id",
+                "constructor_standings.constructor_id = constructors.constructor_id",
+            ],
+        ),
+        TableSchemaContext(
+            table_name="sprint_results",
+            description="Resultados de carreras sprint por piloto y evento.",
+            columns=[
+                "result_id",
+                "race_id",
+                "driver_id",
+                "constructor_id",
+                "grid",
+                "position",
+                "position_text",
+                "position_order",
+                "points",
+                "laps",
+                "time",
+                "milliseconds",
+                "fastest_lap",
+                "fastest_lap_time",
+                "status_id",
+            ],
+            joins=[
+                "sprint_results.race_id = races.race_id",
+                "sprint_results.driver_id = drivers.driver_id",
+                "sprint_results.constructor_id = constructors.constructor_id",
+                "sprint_results.status_id = status.status_id",
             ],
         ),
     ]

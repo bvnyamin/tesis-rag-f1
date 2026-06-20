@@ -9,6 +9,8 @@ from openai import OpenAI
 from f1_rag.config import AppConfig
 from f1_rag.database.sql_validator import validate_select_query
 
+from .entity_resolver import ResolvedEntity, format_resolved_entities, resolve_entities
+from .intent_router import SqlIntentHint, infer_sql_intent_hint
 from .prompt_builder import build_nl2sql_prompt
 from .schema_context import get_schema_context_text
 
@@ -18,6 +20,8 @@ def generate_sql_query(
     rag_context: str,
     schema_context: str | None = None,
     config: AppConfig | None = None,
+    intent_hint: SqlIntentHint | None = None,
+    resolved_entities: list[ResolvedEntity] | None = None,
 ) -> str:
     """Genera una consulta SQL SELECT limpia a partir de una pregunta natural."""
 
@@ -25,11 +29,21 @@ def generate_sql_query(
     if not app_config.openai_api_key:
         raise ValueError("OPENAI_API_KEY es obligatorio para generar SQL con el modelo.")
 
+    effective_intent_hint = intent_hint or infer_sql_intent_hint(user_question)
+    effective_resolved_entities = resolved_entities
+    if effective_resolved_entities is None:
+        effective_resolved_entities = resolve_entities(user_question, config=app_config)
     effective_schema_context = schema_context or get_schema_context_text()
     prompt = build_nl2sql_prompt(
         user_question=user_question,
         rag_context=rag_context,
         schema_context=effective_schema_context,
+        intent_guidance=(
+            f"Intento detectado: {effective_intent_hint.intent_name}. "
+            f"Tablas prioritarias: {', '.join(effective_intent_hint.target_tables)}. "
+            f"{effective_intent_hint.guidance}"
+        ),
+        entity_context=format_resolved_entities(effective_resolved_entities),
     )
 
     client = OpenAI(api_key=app_config.openai_api_key)

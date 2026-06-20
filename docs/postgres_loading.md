@@ -1,7 +1,7 @@
 # Carga del dataset en PostgreSQL
 
-Esta etapa carga un subconjunto estructural minimo del dataset de Formula 1 en
-PostgreSQL para soportar futuras consultas SQL.
+Esta etapa carga un subconjunto estructural ampliado del dataset de Formula 1 en
+PostgreSQL para soportar consultas SQL e hibridas mas ricas.
 
 ## Tablas incluidas
 
@@ -9,7 +9,12 @@ PostgreSQL para soportar futuras consultas SQL.
 - `constructors`
 - `circuits`
 - `races`
+- `status`
 - `results`
+- `qualifying`
+- `driver_standings`
+- `constructor_standings`
+- `sprint_results`
 
 ## Archivo de esquema
 
@@ -30,10 +35,9 @@ docker compose exec app python scripts/load_postgres.py
 1. Se conecta a PostgreSQL usando las variables de entorno del proyecto.
 2. Crea las tablas si no existen.
 3. Vacia las tablas objetivo en orden seguro.
-4. Carga los CSV desde `data/raw/`.
+4. Carga los CSV desde `data/raw/` en orden seguro segun sus dependencias.
 
 ## Observaciones
 
-- Esta etapa todavia no implementa NL2SQL.
-- Esta etapa tampoco genera respuestas finales.
-- El objetivo es dejar la capa estructurada lista para futuras consultas SQL.
+- Esta etapa deja mas tablas listas para consultas exactas, comparativas y de temporada.
+- La app puede aprovechar estas tablas para preguntas mas ricas una vez que el pipeline hibrido las empiece a usar mejor.

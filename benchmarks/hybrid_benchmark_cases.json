@@ -1,0 +1,96 @@
+[
+  {
+    "case_id": "winner_australia_2008",
+    "category": "results",
+    "question": "Quien gano el Australian Grand Prix de 2008?",
+    "top_k": 3,
+    "expectation": {
+      "min_row_count": 1,
+      "expected_context_tables": ["results"],
+      "expected_sql_keywords": ["results", "australian grand prix", "2008"],
+      "expected_answer_keywords": ["Lewis Hamilton", "Australian Grand Prix", "2008"]
+    }
+  },
+  {
+    "case_id": "standings_australia_2008",
+    "category": "driver_standings",
+    "question": "Quien lideraba el campeonato de pilotos despues del Australian Grand Prix de 2008?",
+    "top_k": 3,
+    "expectation": {
+      "min_row_count": 1,
+      "expected_context_tables": ["driver_standings"],
+      "expected_sql_keywords": ["driver_standings", "australian grand prix", "2008"],
+      "expected_answer_keywords": ["Lewis Hamilton", "10", "victoria"]
+    }
+  },
+  {
+    "case_id": "pole_australia_2008",
+    "category": "qualifying",
+    "question": "Quien hizo la pole position en el Australian Grand Prix de 2008?",
+    "top_k": 3,
+    "expectation": {
+      "min_row_count": 1,
+      "expected_context_tables": ["qualifying"],
+      "expected_sql_keywords": ["qualifying", "position = 1", "australian grand prix", "2008"],
+      "expected_answer_keywords": ["Lewis Hamilton", "McLaren", "pole"]
+    }
+  },
+  {
+    "case_id": "sprint_saopaulo_2021",
+    "category": "sprint_results",
+    "question": "Quien gano el sprint del Sao Paulo Grand Prix 2021?",
+    "top_k": 3,
+    "expectation": {
+      "min_row_count": 1,
+      "expected_context_tables": ["sprint_results"],
+      "expected_sql_keywords": ["sprint_results", "sao paulo", "2021"],
+      "expected_answer_keywords": ["Valtteri Bottas", "Mercedes", "sprint"]
+    }
+  },
+  {
+    "case_id": "kimi_status_australia_2008",
+    "category": "race_status",
+    "question": "Que le paso a Kimi Raikkonen en el Australian Grand Prix de 2008?",
+    "top_k": 3,
+    "expectation": {
+      "min_row_count": 1,
+      "expected_context_tables": ["results"],
+      "expected_sql_keywords": ["results", "raikkonen", "australian grand prix", "2008"],
+      "expected_answer_keywords": ["Kimi", "Engine", "2008"]
+    }
+  },
+  {
+    "case_id": "constructor_standings_australia_2008",
+    "category": "constructor_standings",
+    "question": "Que escuderia lideraba el campeonato de constructores despues del Australian Grand Prix de 2008?",
+    "top_k": 3,
+    "expectation": {
+      "min_row_count": 1,
+      "expected_context_tables": ["constructor_standings"],
+      "expected_sql_keywords": ["constructor_standings", "australian grand prix", "2008"],
+      "expected_answer_keywords": ["McLaren", "14", "constructores"]
+    }
+  },
+  {
+    "case_id": "top_driver_wins_history",
+    "category": "analytical_ranking",
+    "question": "Compara las victorias de los 10 pilotos con más triunfos en la historia de la Fórmula 1",
+    "top_k": 3,
+    "expectation": {
+      "min_row_count": 10,
+      "expected_sql_keywords": ["results", "position_order = 1", "limit 10"],
+      "expected_answer_keywords": ["Lewis Hamilton", "105", "Michael Schumacher", "Max Verstappen"]
+    }
+  },
+  {
+    "case_id": "hamilton_wins_by_season",
+    "category": "analytical_trend",
+    "question": "Evolución de las victorias de Lewis Hamilton por temporada",
+    "top_k": 3,
+    "expectation": {
+      "min_row_count": 10,
+      "expected_sql_keywords": ["results", "group by", "season_year"],
+      "expected_answer_keywords": ["Lewis Hamilton", "2014", "11", "temporada"]
+    }
+  }
+]

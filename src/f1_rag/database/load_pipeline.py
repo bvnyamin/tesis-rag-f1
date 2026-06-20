@@ -90,6 +90,14 @@ TABLE_LOAD_ORDER = [
         ],
     ),
     TableLoadConfig(
+        csv_name="status.csv",
+        table_name="status",
+        columns=[
+            "status_id",
+            "status",
+        ],
+    ),
+    TableLoadConfig(
         csv_name="results.csv",
         table_name="results",
         columns=[
@@ -113,6 +121,69 @@ TABLE_LOAD_ORDER = [
             "status_id",
         ],
     ),
+    TableLoadConfig(
+        csv_name="qualifying.csv",
+        table_name="qualifying",
+        columns=[
+            "qualify_id",
+            "race_id",
+            "driver_id",
+            "constructor_id",
+            "number",
+            "position",
+            "q1",
+            "q2",
+            "q3",
+        ],
+    ),
+    TableLoadConfig(
+        csv_name="driver_standings.csv",
+        table_name="driver_standings",
+        columns=[
+            "driver_standings_id",
+            "race_id",
+            "driver_id",
+            "points",
+            "position",
+            "position_text",
+            "wins",
+        ],
+    ),
+    TableLoadConfig(
+        csv_name="constructor_standings.csv",
+        table_name="constructor_standings",
+        columns=[
+            "constructor_standings_id",
+            "race_id",
+            "constructor_id",
+            "points",
+            "position",
+            "position_text",
+            "wins",
+        ],
+    ),
+    TableLoadConfig(
+        csv_name="sprint_results.csv",
+        table_name="sprint_results",
+        columns=[
+            "result_id",
+            "race_id",
+            "driver_id",
+            "constructor_id",
+            "number",
+            "grid",
+            "position",
+            "position_text",
+            "position_order",
+            "points",
+            "laps",
+            "time",
+            "milliseconds",
+            "fastest_lap",
+            "fastest_lap_time",
+            "status_id",
+        ],
+    ),
 ]
 
 
@@ -133,6 +204,9 @@ CSV_TO_DB_COLUMNS = {
         "race_id": "raceId",
         "circuit_id": "circuitId",
     },
+    "status": {
+        "status_id": "statusId",
+    },
     "results": {
         "result_id": "resultId",
         "race_id": "raceId",
@@ -145,6 +219,35 @@ CSV_TO_DB_COLUMNS = {
         "fastest_lap_speed": "fastestLapSpeed",
         "status_id": "statusId",
     },
+    "qualifying": {
+        "qualify_id": "qualifyId",
+        "race_id": "raceId",
+        "driver_id": "driverId",
+        "constructor_id": "constructorId",
+    },
+    "driver_standings": {
+        "driver_standings_id": "driverStandingsId",
+        "race_id": "raceId",
+        "driver_id": "driverId",
+        "position_text": "positionText",
+    },
+    "constructor_standings": {
+        "constructor_standings_id": "constructorStandingsId",
+        "race_id": "raceId",
+        "constructor_id": "constructorId",
+        "position_text": "positionText",
+    },
+    "sprint_results": {
+        "result_id": "resultId",
+        "race_id": "raceId",
+        "driver_id": "driverId",
+        "constructor_id": "constructorId",
+        "position_text": "positionText",
+        "position_order": "positionOrder",
+        "fastest_lap": "fastestLap",
+        "fastest_lap_time": "fastestLapTime",
+        "status_id": "statusId",
+    },
 }
 
 
@@ -152,7 +255,7 @@ def run_postgres_load_pipeline(
     raw_dir: str | Path = "data/raw",
     config: AppConfig | None = None,
 ) -> dict[str, int]:
-    """Carga las tablas principales de F1 en PostgreSQL."""
+    """Carga las tablas estructuradas principales de F1 en PostgreSQL."""
 
     app_config = config or AppConfig.from_env()
     raw_path = Path(raw_dir)

@@ -172,6 +172,15 @@ Esto:
 - genera embeddings con OpenAI
 - indexa en Chroma
 
+Si el archivo tiene muchos miles de chunks, conviene indexar por lotes:
+
+```text
+docker compose exec app python -m f1_rag.retrieval.cli --offset 0 --limit 2000 --batch-size 500
+```
+
+Eso indexa 2000 documentos desde el inicio, en 4 lotes de 500, mostrando avance
+en consola.
+
 ### Paso 5. Abrir la app
 
 Con los servicios levantados, abrir:
@@ -267,6 +276,18 @@ docker compose exec app python -m f1_rag.nl2sql.example_usage "Quien gano el Aus
 docker compose exec app python -m f1_rag.orchestration.example_usage "Quien gano el Australian Grand Prix de 2008?" --top-k 3
 ```
 
+### Ejecutar benchmark inicial del sistema
+
+```text
+docker compose exec app python scripts/run_benchmark.py
+```
+
+Para ejecutar solo un caso:
+
+```text
+docker compose exec app python scripts/run_benchmark.py --case-id pole_australia_2008
+```
+
 ## Como funciona la interfaz
 
 La app muestra varias capas del proceso porque este proyecto esta pensado como
@@ -328,7 +349,18 @@ docker compose up -d
 ### La indexacion tarda demasiado
 
 Puede pasar si `rag_documents.jsonl` contiene muchos miles de chunks. Para una
-prueba inicial, se puede trabajar con una muestra pequena del archivo.
+prueba inicial, se puede trabajar con una muestra pequena del archivo o usar
+indexacion por lotes.
+
+Ejemplo:
+
+```text
+docker compose exec app python -m f1_rag.retrieval.cli --offset 0 --limit 1000 --batch-size 250
+docker compose exec app python -m f1_rag.retrieval.cli --offset 1000 --limit 1000 --batch-size 250
+```
+
+De esa forma se avanza por ventanas controladas del dataset sin reescribir el
+archivo `rag_documents.jsonl`.
 
 ### La app no refleja cambios de codigo
 
@@ -373,6 +405,7 @@ docker builder prune
 - `docs/indexing_metadata.md`
 - `docs/minimal_pipeline_examples.md`
 - `docs/f1_chunk_examples.md`
+- `docs/benchmark_evaluation.md`
 
 ## Estado actual
 

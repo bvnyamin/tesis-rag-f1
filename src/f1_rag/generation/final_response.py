@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 import json
 from dataclasses import dataclass
 
@@ -10,6 +11,7 @@ from openai import OpenAI
 
 from f1_rag.config import AppConfig
 from f1_rag.database.query_executor import QueryExecutionResult
+from f1_rag.ui.reporting import QueryReport
 
 
 @dataclass(slots=True)
@@ -25,6 +27,7 @@ def generate_final_response(
     rag_context: str,
     sql_query: str,
     sql_result: QueryExecutionResult,
+    query_report: QueryReport,
     config: AppConfig | None = None,
 ) -> FinalAnswerResult:
     """Genera una respuesta final en lenguaje natural para el usuario."""
@@ -38,6 +41,7 @@ def generate_final_response(
         rag_context=rag_context,
         sql_query=sql_query,
         sql_result=sql_result,
+        query_report=query_report,
     )
 
     client = OpenAI(api_key=app_config.openai_api_key)
@@ -61,6 +65,7 @@ def build_final_response_prompt(
     rag_context: str,
     sql_query: str,
     sql_result: QueryExecutionResult,
+    query_report: QueryReport,
 ) -> str:
     """Construye el prompt para responder al usuario con evidencia estructurada."""
 
@@ -78,6 +83,7 @@ Tu tarea es responder la pregunta del usuario usando:
 - el contexto recuperado por RAG
 - la consulta SQL generada
 - el resultado real de esa consulta
+- el resumen analítico derivado del resultado
 
 Reglas:
 - Responde en espanol claro y preciso.
@@ -85,6 +91,12 @@ Reglas:
 - Si el resultado SQL esta vacio, dilo explicitamente.
 - No inventes datos que no aparezcan en el contexto o en el resultado SQL.
 - Si es util, menciona nombres de pilotos, carreras, escuderias y temporadas.
+- Mantén la respuesta breve: normalmente 1 parrafo corto o una lista corta si es un ranking.
+- No repitas que ejecutaste una consulta ni que devolvio N filas, salvo que sea realmente importante para entender la respuesta.
+- No agregues secciones tituladas como "Sugerencia de visualización", "Fuente y notas" o similares.
+- No cierres preguntando si el usuario quiere otra cosa.
+- Usa el resumen analítico solo para enriquecer la interpretación, no para duplicar lo que ya mostrará la interfaz.
+- No menciones detalles irrelevantes como IDs si no ayudan a responder mejor.
 - No menciones el prompt ni hables de ti mismo.
 
 Pregunta del usuario:
@@ -98,6 +110,12 @@ Consulta SQL ejecutada:
 
 Resultado SQL:
 {json.dumps(sql_result_payload, ensure_ascii=True, indent=2)}
+
+Resumen analítico:
+{query_report.summary_text}
+
+Hallazgo analítico breve:
+{query_report.headline_text}
 """.strip()
 
 
@@ -112,4 +130,8 @@ def _make_json_safe(value: object) -> object:
         return [_make_json_safe(item) for item in value]
     if isinstance(value, (date, datetime)):
         return value.isoformat()
+    if isinstance(value, Decimal):
+        if value == value.to_integral_value():
+            return int(value)
+        return float(value)
     return value
