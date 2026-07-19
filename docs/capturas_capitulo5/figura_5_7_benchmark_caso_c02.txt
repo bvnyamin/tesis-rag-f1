@@ -1,0 +1,19 @@
+Benchmark (hybrid) completado.
+- Casos totales: 1
+- Casos aprobados: 0
+- Casos fallidos: 1
+- Duracion total: 37.58 segundos
+- Resumen por categoria:
+  - C (Relacional compleja): 0/1 aprobados, promedio 37.58s, metricas {'M-01': 0.0, 'M-02': 1.0}
+- [FAIL] C-02 (C - Relacional compleja) en 37.58s
+  - M-01: X
+  - M-02: V
+  - M-03: N/A
+  - M-06: V
+  - M-07: N/A
+  - row_count: ok | Filas obtenidas: 1. Minimo esperado: 1.
+  - execution_accuracy: error | Filas referencia: 1. Filas generadas: 1.
+  - context_tables: ok | Tablas recuperadas: ['driver_standings', 'driver_standings', 'driver_standings']. Esperadas: ['driver_standings'].
+  - answer_keywords: ok | Keywords de respuesta faltantes: ninguna.
+Reporte JSON guardado en: data/processed/benchmark_report.json
+Plantilla CSV de revision manual guardada en: data/processed/benchmark_manual_review.csv

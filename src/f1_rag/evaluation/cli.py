@@ -10,6 +10,7 @@ from f1_rag.config import AppConfig
 
 from .benchmark import (
     benchmark_suite_to_dict,
+    export_manual_review_template,
     load_benchmark_cases,
     render_benchmark_summary,
     run_benchmark_suite,
@@ -31,6 +32,17 @@ def main() -> None:
         help="Ruta donde se guardará el reporte JSON.",
     )
     parser.add_argument(
+        "--manual-output-path",
+        default="data/processed/benchmark_manual_review.csv",
+        help="Ruta donde se guardará la plantilla CSV para evaluación cualitativa manual.",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["hybrid", "baseline"],
+        default="hybrid",
+        help="Modo de evaluación: sistema completo con RAG o línea base sin RAG.",
+    )
+    parser.add_argument(
         "--case-id",
         action="append",
         default=None,
@@ -41,7 +53,11 @@ def main() -> None:
     try:
         all_cases = load_benchmark_cases(args.cases_path)
         selected_cases = _filter_cases(all_cases, args.case_id)
-        suite_result = run_benchmark_suite(selected_cases, config=AppConfig.from_env())
+        suite_result = run_benchmark_suite(
+            selected_cases,
+            config=AppConfig.from_env(),
+            mode=args.mode,
+        )
     except (FileNotFoundError, ValueError, RuntimeError) as exc:
         print(f"El benchmark falló: {exc}")
         raise SystemExit(1) from exc
@@ -52,9 +68,11 @@ def main() -> None:
         json.dumps(benchmark_suite_to_dict(suite_result), indent=2, ensure_ascii=True),
         encoding="utf-8",
     )
+    manual_output_path = export_manual_review_template(suite_result, args.manual_output_path)
 
     print(render_benchmark_summary(suite_result))
     print(f"Reporte JSON guardado en: {output_path}")
+    print(f"Plantilla CSV de revisión manual guardada en: {manual_output_path}")
 
 
 def _filter_cases(cases, selected_case_ids):

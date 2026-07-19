@@ -127,13 +127,31 @@ def build_metadata_prefilter(
     if len(query_years) == 1:
         conditions.append({"season_year": query_years[0]})
 
+    if intent_hint is not None and intent_hint.intent_name == "driver_profile":
+        conditions.append({"table_name": "drivers"})
+
+    if intent_hint is not None and intent_hint.intent_name == "circuit_profile":
+        conditions.append({"table_name": "circuits"})
+
+    if intent_hint is not None and intent_hint.intent_name == "constructor_profile":
+        conditions.append({"table_name": "constructors"})
+
     driver_entities = [entity for entity in resolved_entities if entity.entity_type == "driver"]
     if len(driver_entities) == 1 and _driver_filter_is_helpful(intent_hint):
         conditions.append({"driver_name": driver_entities[0].display_name})
+        if intent_hint is not None and intent_hint.intent_name == "driver_profile":
+            conditions.append({"table_name": "drivers"})
 
     constructor_entities = [entity for entity in resolved_entities if entity.entity_type == "constructor"]
     if len(constructor_entities) == 1 and _constructor_filter_is_helpful(intent_hint):
         conditions.append({"constructor_name": constructor_entities[0].display_name})
+        if intent_hint is not None and intent_hint.intent_name == "constructor_profile":
+            conditions.append({"table_name": "constructors"})
+
+    circuit_entities = [entity for entity in resolved_entities if entity.entity_type == "circuit"]
+    if len(circuit_entities) == 1 and intent_hint is not None and intent_hint.intent_name == "circuit_profile":
+        conditions.append({"circuit_name": circuit_entities[0].display_name})
+        conditions.append({"table_name": "circuits"})
 
     analytical_table_filter = _build_analytical_table_prefilter(intent_hint)
     if analytical_table_filter is not None:
@@ -388,6 +406,9 @@ def _content_type_matches_intent(content_type: str, intent_name: str) -> bool:
     content_map = {
         "analytical_ranking": {"analitica_piloto", "analitica_constructores", "analitica_temporada"},
         "analytical_trend": {"analitica_piloto", "analitica_constructores", "analitica_temporada", "carrera"},
+        "driver_profile": {"piloto"},
+        "circuit_profile": {"circuito"},
+        "constructor_profile": {"escuderia"},
         "qualifying": {"clasificacion"},
         "driver_standings": {"standing_piloto"},
         "constructor_standings": {"standing_constructores"},
@@ -449,6 +470,24 @@ def _get_intent_specific_bonus(intent_name: str, table_name: str, content_type: 
         if table_name == "results":
             return 0.25
 
+    if intent_name == "driver_profile":
+        if table_name == "drivers" or content_type == "piloto":
+            return 6.0
+        if table_name == "driver_analytics":
+            return 0.5
+
+    if intent_name == "circuit_profile":
+        if table_name == "circuits" or content_type == "circuito":
+            return 6.0
+        if table_name == "races":
+            return 0.5
+
+    if intent_name == "constructor_profile":
+        if table_name == "constructors" or content_type == "escuderia":
+            return 6.0
+        if table_name == "constructor_analytics":
+            return 0.5
+
     return 0.0
 
 
@@ -488,6 +527,24 @@ def _get_intent_specific_penalty(intent_name: str, table_name: str, content_type
     if intent_name == "analytical_trend":
         if table_name in {"drivers", "constructors"} and content_type in {"piloto", "escuderia"}:
             return -1.25
+
+    if intent_name == "driver_profile":
+        if table_name in {"driver_standings", "results", "qualifying", "season_analytics"}:
+            return -4.0
+        if content_type in {"standing_piloto", "resultado_carrera", "clasificacion", "analitica_temporada"}:
+            return -3.0
+
+    if intent_name == "circuit_profile":
+        if table_name in {"results", "driver_standings", "constructor_standings", "qualifying"}:
+            return -4.0
+        if content_type in {"resultado_carrera", "standing_piloto", "standing_constructores", "clasificacion"}:
+            return -3.0
+
+    if intent_name == "constructor_profile":
+        if table_name in {"results", "constructor_standings", "qualifying", "season_analytics"}:
+            return -4.0
+        if content_type in {"resultado_carrera", "standing_constructores", "clasificacion", "analitica_temporada"}:
+            return -3.0
 
     return 0.0
 
@@ -571,6 +628,7 @@ def _driver_filter_is_helpful(intent_hint: SqlIntentHint | None) -> bool:
     if intent_hint is None:
         return False
     return intent_hint.intent_name in {
+        "driver_profile",
         "analytical_trend",
         "results",
         "race_status",
@@ -585,6 +643,7 @@ def _constructor_filter_is_helpful(intent_hint: SqlIntentHint | None) -> bool:
     if intent_hint is None:
         return False
     return intent_hint.intent_name in {
+        "constructor_profile",
         "analytical_trend",
         "results",
         "qualifying",

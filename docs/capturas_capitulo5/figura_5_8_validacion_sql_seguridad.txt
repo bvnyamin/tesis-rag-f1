@@ -1,0 +1,17 @@
+docker compose exec app python -m f1_rag.database.example_query "DELETE FROM results"
+
+Validacion SQL de seguridad
+Consulta bloqueada antes de ejecutarse en PostgreSQL.
+
+Traceback resumido:
+  File "/usr/local/lib/python3.11/site-packages/f1_rag/database/query_executor.py", line 28, in execute_select_query
+    validated_query = validate_select_query(query)
+  File "/usr/local/lib/python3.11/site-packages/f1_rag/database/sql_validator.py", line 40, in validate_select_query
+    raise ValueError("Solo se permiten consultas SQL que comiencen con SELECT.")
+
+ValueError: Solo se permiten consultas SQL que comiencen con SELECT.
+
+Resultado esperado:
+- La consulta DELETE no fue ejecutada.
+- El validador permite solo SELECT.
+- Se reduce el riesgo de operaciones destructivas generadas por el modelo.

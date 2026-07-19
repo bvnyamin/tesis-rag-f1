@@ -60,6 +60,11 @@ def generate_sql_query(
         raise RuntimeError("El modelo no devolvio ninguna consulta SQL.")
 
     cleaned_sql = _extract_sql_text(raw_output)
+    cleaned_sql = _apply_sql_postprocessing(
+        cleaned_sql,
+        intent_hint=effective_intent_hint,
+        user_question=user_question,
+    )
     return validate_select_query(cleaned_sql)
 
 
@@ -75,3 +80,93 @@ def _extract_sql_text(raw_output: str) -> str:
         return generic_fenced_match.group(1).strip()
 
     return raw_output.strip()
+
+
+def _apply_sql_postprocessing(
+    sql_text: str,
+    intent_hint: SqlIntentHint,
+    user_question: str,
+) -> str:
+    """Aplica ajustes deterministas menores para estabilizar el SQL generado."""
+
+    adjusted_sql = sql_text.strip()
+
+    if intent_hint.intent_name == "analytical_ranking":
+        adjusted_sql = _normalize_standings_order_by(
+            adjusted_sql,
+            user_question=user_question,
+        )
+        adjusted_sql = _normalize_ranking_order_by(
+            adjusted_sql,
+            user_question=user_question,
+        )
+
+    return adjusted_sql
+
+
+def _normalize_ranking_order_by(
+    sql_text: str,
+    user_question: str,
+) -> str:
+    """Normaliza el desempate de rankings para que use aliases legibles."""
+
+    ranking_aliases = [
+        "driver_name",
+        "constructor_name",
+        "circuit_name",
+        "race_name",
+    ]
+
+    lowered_sql = sql_text.lower()
+    lowered_question = user_question.lower()
+    alias_to_use = next((alias for alias in ranking_aliases if re.search(rf"\bas\s+{alias}\b", lowered_sql)), None)
+    asks_for_wins = any(
+        keyword in lowered_question
+        for keyword in ("victorias", "triunfos", "ganadores", "wins", "victory")
+    )
+    metric_to_use = "total_wins" if asks_for_wins and re.search(r"\btotal_wins\b", lowered_sql) else None
+
+    if alias_to_use is None or metric_to_use is None or "order by" not in lowered_sql:
+        return sql_text
+
+    order_by_pattern = re.compile(
+        r"order\s+by\s+.+?(?=(\s+limit\b|\s+offset\b|$))",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    replacement = f"ORDER BY {metric_to_use} DESC, {alias_to_use} ASC"
+    return order_by_pattern.sub(replacement, sql_text, count=1)
+
+
+def _normalize_standings_order_by(
+    sql_text: str,
+    user_question: str,
+) -> str:
+    """Fuerza orden estable por posicion en preguntas de standings del campeonato."""
+
+    lowered_sql = sql_text.lower()
+    lowered_question = user_question.lower()
+
+    asks_for_standings = any(
+        keyword in lowered_question
+        for keyword in ("campeonato", "standings", "clasificacion", "ranking")
+    )
+    asks_for_points = any(
+        keyword in lowered_question
+        for keyword in ("puntos", "point", "pts")
+    )
+
+    if not asks_for_standings or not asks_for_points or "order by" not in lowered_sql:
+        return sql_text
+
+    if "from driver_standings" in lowered_sql and "ds.position" in lowered_sql:
+        replacement = "ORDER BY ds.position"
+    elif "from constructor_standings" in lowered_sql and "cs.position" in lowered_sql:
+        replacement = "ORDER BY cs.position"
+    else:
+        return sql_text
+
+    order_by_pattern = re.compile(
+        r"order\s+by\s+.+?(?=(\s+limit\b|\s+offset\b|$))",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return order_by_pattern.sub(replacement, sql_text, count=1)

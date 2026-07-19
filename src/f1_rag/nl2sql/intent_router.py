@@ -21,6 +21,36 @@ def infer_sql_intent_hint(user_question: str) -> SqlIntentHint:
     ranking_keywords = ["top", "ranking", "mas", "más", "mayores", "menores", "compar", "lista"]
     trend_keywords = ["evolucion", "evolución", "progresion", "progresión", "historia", "a lo largo", "por temporada"]
 
+    if _looks_like_driver_profile_question(normalized_question):
+        return SqlIntentHint(
+            intent_name="driver_profile",
+            target_tables=["drivers"],
+            guidance=(
+                "La pregunta parece pedir un atributo descriptivo de un piloto. "
+                "Prioriza la tabla drivers y evita standings, analytics o results salvo que el usuario pida rendimiento deportivo."
+            ),
+        )
+
+    if _looks_like_circuit_profile_question(normalized_question):
+        return SqlIntentHint(
+            intent_name="circuit_profile",
+            target_tables=["circuits"],
+            guidance=(
+                "La pregunta parece pedir un atributo descriptivo de un circuito. "
+                "Prioriza la tabla circuits y evita usar races o results salvo que la pregunta pida eventos disputados ahi."
+            ),
+        )
+
+    if _looks_like_constructor_profile_question(normalized_question):
+        return SqlIntentHint(
+            intent_name="constructor_profile",
+            target_tables=["constructors"],
+            guidance=(
+                "La pregunta parece pedir un atributo descriptivo de una escuderia. "
+                "Prioriza la tabla constructors y evita standings o results salvo que la pregunta pida rendimiento historico."
+            ),
+        )
+
     if any(keyword in normalized_question for keyword in ranking_keywords):
         return SqlIntentHint(
             intent_name="analytical_ranking",
@@ -127,3 +157,52 @@ def infer_sql_intent_hint(user_question: str) -> SqlIntentHint:
             "La pregunta parece general. Usa las tablas principales y apóyate en el contexto RAG para desambiguar."
         ),
     )
+
+
+def _looks_like_driver_profile_question(normalized_question: str) -> bool:
+    """Detecta preguntas simples sobre atributos de un piloto."""
+
+    profile_keywords = [
+        "nacionalidad",
+        "fecha de nacimiento",
+        "cuando nacio",
+        "cuándo nació",
+        "codigo fia",
+        "código fia",
+        "numero historico",
+        "nacio",
+        "nació",
+    ]
+    return any(keyword in normalized_question for keyword in profile_keywords)
+
+
+def _looks_like_circuit_profile_question(normalized_question: str) -> bool:
+    """Detecta preguntas simples sobre atributos de un circuito."""
+
+    profile_keywords = [
+        "en que pais",
+        "en qué país",
+        "donde esta",
+        "dónde está",
+        "ubicado",
+        "ubicacion",
+        "ubicación",
+        "altitud",
+        "ciudad",
+    ]
+    return any(keyword in normalized_question for keyword in profile_keywords) and "circuit" in normalized_question
+
+
+def _looks_like_constructor_profile_question(normalized_question: str) -> bool:
+    """Detecta preguntas simples sobre atributos de una escuderia."""
+
+    profile_keywords = [
+        "nacionalidad",
+        "de que pais",
+        "de qué país",
+        "escuderia",
+        "escuderia",
+        "constructor",
+        "equipo",
+    ]
+    return "nacionalidad" in normalized_question and any(keyword in normalized_question for keyword in profile_keywords)

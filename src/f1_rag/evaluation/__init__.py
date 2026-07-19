@@ -3,8 +3,11 @@
 from .benchmark import (
     BenchmarkCase,
     BenchmarkCaseResult,
+    BenchmarkCategorySummary,
     BenchmarkExpectation,
     BenchmarkSuiteResult,
+    export_manual_review_template,
+    filter_cases_for_mode,
     load_benchmark_cases,
     run_benchmark_case,
     run_benchmark_suite,
@@ -13,8 +16,11 @@ from .benchmark import (
 __all__ = [
     "BenchmarkCase",
     "BenchmarkCaseResult",
+    "BenchmarkCategorySummary",
     "BenchmarkExpectation",
     "BenchmarkSuiteResult",
+    "export_manual_review_template",
+    "filter_cases_for_mode",
     "load_benchmark_cases",
     "run_benchmark_case",
     "run_benchmark_suite",

@@ -15,6 +15,7 @@ from f1_rag.nl2sql import (
     get_schema_context_text,
     infer_sql_intent_hint,
     resolve_entities,
+    validate_user_question_safety,
 )
 from f1_rag.retrieval import RetrievedChunk, format_retrieved_context, retrieve_context
 from f1_rag.ui import QueryReport, build_query_report
@@ -40,24 +41,27 @@ def run_hybrid_pipeline(
     question: str,
     config: AppConfig | None = None,
     top_k: int | None = None,
+    enable_rag: bool = True,
 ) -> HybridPipelineResult:
     """Ejecuta el flujo completo de pregunta a respuesta final."""
 
     app_config = config or AppConfig.from_env()
-    normalized_question = question.strip()
-    if not normalized_question:
-        raise ValueError("La pregunta del usuario no puede estar vacia.")
+    normalized_question = validate_user_question_safety(question)
 
     intent_hint = infer_sql_intent_hint(normalized_question)
     resolved_entities = resolve_entities(normalized_question, config=app_config)
-    retrieved_chunks = retrieve_context(
-        normalized_question,
-        config=app_config,
-        top_k=top_k,
-        intent_hint=intent_hint,
-        resolved_entities=resolved_entities,
-    )
-    rag_context = format_retrieved_context(retrieved_chunks)
+    if enable_rag:
+        retrieved_chunks = retrieve_context(
+            normalized_question,
+            config=app_config,
+            top_k=top_k,
+            intent_hint=intent_hint,
+            resolved_entities=resolved_entities,
+        )
+        rag_context = format_retrieved_context(retrieved_chunks)
+    else:
+        retrieved_chunks = []
+        rag_context = "No se recupero contexto adicional (modo linea base sin RAG)."
     schema_context = get_schema_context_text()
 
     generated_sql = generate_sql_query(

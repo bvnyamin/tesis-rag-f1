@@ -1,0 +1,21 @@
+docker compose exec app python scripts/run_benchmark.py --cases-path benchmarks/thesis_benchmark_selected_24.json --mode hybrid --case-id A-01
+
+Benchmark (hybrid) completado.
+- Casos totales: 1
+- Casos aprobados: 1
+- Casos fallidos: 0
+- Duracion total: 30.31 segundos
+- Resumen por categoria:
+  - A (Recuperacion simple): 1/1 aprobados, promedio 30.31s, metricas {'M-01': 1.0, 'M-02': 1.0}
+- [PASS] A-01 (A - Recuperacion simple) en 30.31s
+  - M-01: V
+  - M-02: V
+  - M-03: N/A
+  - M-06: V
+  - M-07: N/A
+  - row_count: ok | Filas obtenidas: 1. Minimo esperado: 1.
+  - execution_accuracy: ok | Filas referencia: 1. Filas generadas: 1.
+  - context_tables: ok | Tablas recuperadas: ['drivers', 'drivers', 'drivers']. Esperadas: ['drivers'].
+  - answer_keywords: ok | Keywords de respuesta faltantes: ninguna.
+Reporte JSON guardado en: data/processed/benchmark_report.json
+Plantilla CSV de revision manual guardada en: data/processed/benchmark_manual_review.csv

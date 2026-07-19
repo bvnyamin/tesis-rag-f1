@@ -81,30 +81,47 @@ def infer_chart_spec(
     datetime_columns = list(dataframe.select_dtypes(include=["datetime64[ns]"]).columns)
     timeline_columns = _get_timeline_columns(dataframe)
     categorical_columns = _get_preferred_categorical_columns(dataframe, excluded_columns=datetime_columns)
+    timeline_column = _select_informative_timeline_column(dataframe, timeline_columns)
+    categorical_column = _select_informative_categorical_column(dataframe, categorical_columns)
 
     if primary_metric is None:
         return None, "No se detectó una métrica numérica suficientemente informativa para graficar."
 
-    if timeline_columns and primary_metric in dataframe.columns:
+    # Si existe una dimensión categórica rica, preferimos barras para comparaciones.
+    if categorical_column and primary_metric in dataframe.columns and len(dataframe) <= 20:
+        if timeline_column is None or _should_prefer_bar_over_line(dataframe, timeline_column, categorical_column):
+            return (
+                ChartSpec(
+                    chart_type="bar",
+                    x_column=categorical_column,
+                    y_columns=[primary_metric],
+                    title=f"Comparación de {primary_metric} por {categorical_column}",
+                    sort_by=primary_metric,
+                    sort_ascending=False,
+                ),
+                None,
+            )
+
+    if timeline_column and primary_metric in dataframe.columns:
         return (
             ChartSpec(
                 chart_type="line",
-                x_column=timeline_columns[0],
+                x_column=timeline_column,
                 y_columns=[primary_metric],
-                title=f"Evolución de {primary_metric} en función de {timeline_columns[0]}",
-                sort_by=timeline_columns[0],
+                title=f"Evolución de {primary_metric} en función de {timeline_column}",
+                sort_by=timeline_column,
                 sort_ascending=True,
             ),
             None,
         )
 
-    if categorical_columns and primary_metric in dataframe.columns and len(dataframe) <= 20:
+    if categorical_column and primary_metric in dataframe.columns and len(dataframe) <= 20:
         return (
             ChartSpec(
                 chart_type="bar",
-                x_column=categorical_columns[0],
+                x_column=categorical_column,
                 y_columns=[primary_metric],
-                title=f"Comparación de {primary_metric} por {categorical_columns[0]}",
+                title=f"Comparación de {primary_metric} por {categorical_column}",
                 sort_by=primary_metric,
                 sort_ascending=False,
             ),
@@ -294,6 +311,15 @@ def _get_timeline_columns(dataframe: pd.DataFrame) -> list[str]:
     return preferred_columns + [column for column in datetime_columns if column not in preferred_columns]
 
 
+def _select_informative_timeline_column(dataframe: pd.DataFrame, timeline_columns: list[str]) -> str | None:
+    """Elige una columna temporal que realmente varie entre filas."""
+
+    for column in timeline_columns:
+        if column in dataframe.columns and dataframe[column].nunique(dropna=True) > 1:
+            return column
+    return None
+
+
 def _get_preferred_categorical_columns(
     dataframe: pd.DataFrame,
     excluded_columns: list[str] | None = None,
@@ -325,6 +351,37 @@ def _get_preferred_categorical_columns(
         if column not in preferred_columns and not column.endswith("_id")
     ]
     return preferred_columns + remaining_columns
+
+
+def _select_informative_categorical_column(
+    dataframe: pd.DataFrame,
+    categorical_columns: list[str],
+) -> str | None:
+    """Elige una columna categórica útil para comparar filas distintas."""
+
+    for column in categorical_columns:
+        if column in dataframe.columns and dataframe[column].nunique(dropna=True) > 1:
+            return column
+    return None
+
+
+def _should_prefer_bar_over_line(
+    dataframe: pd.DataFrame,
+    timeline_column: str,
+    categorical_column: str,
+) -> bool:
+    """Decide si una consulta es más comparativa que evolutiva."""
+
+    timeline_unique = dataframe[timeline_column].nunique(dropna=True)
+    categorical_unique = dataframe[categorical_column].nunique(dropna=True)
+
+    if timeline_unique <= 1:
+        return True
+
+    if categorical_unique >= min(len(dataframe), 3):
+        return True
+
+    return False
 
 
 def _build_row_identity(row: dict[str, Any]) -> str:

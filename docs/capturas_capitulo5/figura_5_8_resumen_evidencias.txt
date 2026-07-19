@@ -1,0 +1,26 @@
+Resumen de evidencia para Capitulo 5.8
+Soluciones aplicadas y ajustes realizados
+
+1. Benchmark con caso aprobado
+   - Caso A-01: PASS
+   - M-01: V
+   - M-02: V
+   - Recuperacion RAG esperada: drivers
+   - SQL ejecutada con resultado equivalente a la referencia.
+
+2. Benchmark con caso de limitacion
+   - Caso C-02: FAIL
+   - M-01: X
+   - M-02: V
+   - Contexto RAG correcto: driver_standings
+   - La respuesta fue util, pero la SQL no coincidió exactamente con la referencia.
+
+3. Validacion de seguridad SQL
+   - Consulta probada: DELETE FROM results
+   - Resultado: bloqueada por sql_validator.py
+   - Mensaje: Solo se permiten consultas SQL que comiencen con SELECT.
+
+Interpretacion para el informe:
+Estas evidencias muestran que el prototipo fue estabilizado mediante benchmarks,
+validacion SQL y revision de casos donde la respuesta puede ser util aunque no sea
+exactamente equivalente a la consulta de referencia.
