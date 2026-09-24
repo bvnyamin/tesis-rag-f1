@@ -46,6 +46,9 @@ Reglas obligatorias:
 - Si la pregunta se refiere a sprint, usa sprint_results.
 - Si la pregunta pide estado final, abandono o descalificacion, considera la tabla status unida a results o sprint_results.
 - Si el contexto recuperado aclara nombres de pilotos, escuderias, circuitos o carreras, usalo.
+- Si el contexto recuperado contiene una coincidencia exacta de carrera, temporada, standing, clasificacion o resultado, prioriza esa evidencia y evita reinterpretar la pregunta con otra tabla menos precisa.
+- Si el contexto recuperado menciona explicitamente una tabla o tipo de dato relevante, usalo como pista fuerte para elegir la fuente estructurada principal.
+- Si no hay contexto recuperado, basate solo en entidades resueltas, la pista heuristica y el esquema SQL; no inventes contexto faltante.
 - No escribas explicaciones, markdown ni bloques de codigo.
 - Usa aliases legibles para columnas clave, por ejemplo driver_name, constructor_name, race_name, season_year, total_points o total_wins cuando ayuden a interpretar el resultado.
 

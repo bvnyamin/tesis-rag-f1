@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any
 
 import pandas as pd
@@ -223,6 +224,10 @@ def _normalize_dataframe_types(dataframe: pd.DataFrame) -> pd.DataFrame:
     normalized = dataframe.copy()
     for column in normalized.columns:
         if normalized[column].dtype == "object":
+            non_null_values = normalized[column].dropna()
+            if not non_null_values.empty and non_null_values.map(lambda value: isinstance(value, Decimal)).all():
+                normalized[column] = pd.to_numeric(normalized[column], errors="coerce")
+                continue
             parsed_time_series = _try_parse_lap_time_series(normalized[column])
             if pd.api.types.is_numeric_dtype(parsed_time_series):
                 normalized[column] = parsed_time_series
@@ -272,6 +277,7 @@ def _get_preferred_numeric_columns(dataframe: pd.DataFrame) -> list[str]:
         "q2",
         "q1",
         "total_wins",
+        "season_wins",
         "total_points",
         "total_poles",
         "total_podiums",
@@ -292,12 +298,14 @@ def _get_preferred_numeric_columns(dataframe: pd.DataFrame) -> list[str]:
         for column in numeric_columns
         if column not in preferred_columns
         and not column.endswith("_id")
-        and column not in {"year", "round", "race_id", "driver_id", "constructor_id"}
+        and column not in {"year", "season_year", "round", "race_id", "driver_id", "constructor_id"}
     ]
     fallback_columns = [
         column
         for column in numeric_columns
-        if column not in preferred_columns + remaining_columns and not column.endswith("_id")
+        if column not in preferred_columns + remaining_columns
+        and not column.endswith("_id")
+        and column not in {"year", "season_year", "round"}
     ]
     return preferred_columns + remaining_columns + fallback_columns
 

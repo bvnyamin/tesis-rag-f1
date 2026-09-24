@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 import re
 from typing import Any
 import unicodedata
@@ -10,6 +12,7 @@ import unicodedata
 import chromadb
 
 from f1_rag.config import AppConfig
+from f1_rag.data.serialization import RagDocument, load_documents_from_jsonl
 from f1_rag.embeddings import OpenAIEmbedder
 from f1_rag.nl2sql import ResolvedEntity, SqlIntentHint
 
@@ -49,12 +52,21 @@ def search_similar_chunks(
     effective_top_k = top_k or app_config.retrieval_top_k
     if effective_top_k <= 0:
         raise ValueError("top_k debe ser mayor que cero.")
-    overfetch_k = max(effective_top_k, min(effective_top_k * 4, 20))
+    overfetch_k = max(effective_top_k, min(effective_top_k * 3, 12))
     metadata_filter = build_metadata_prefilter(
         query_text=query_text,
         intent_hint=intent_hint,
         resolved_entities=resolved_entities or [],
     )
+    local_chunks = search_local_chunks(
+        query_text=query_text,
+        top_k=effective_top_k,
+        metadata_filter=metadata_filter,
+        intent_hint=intent_hint,
+        resolved_entities=resolved_entities or [],
+    )
+    if len(local_chunks) >= effective_top_k:
+        return local_chunks[:effective_top_k]
 
     try:
         client = chromadb.HttpClient(
@@ -100,6 +112,9 @@ def search_similar_chunks(
             )
         )
 
+    if local_chunks:
+        retrieved_chunks = _merge_retrieved_chunks(local_chunks, retrieved_chunks)
+
     reranked_chunks = rerank_retrieved_chunks(
         chunks=retrieved_chunks,
         query_text=query_text,
@@ -135,6 +150,21 @@ def build_metadata_prefilter(
 
     if intent_hint is not None and intent_hint.intent_name == "constructor_profile":
         conditions.append({"table_name": "constructors"})
+
+    if intent_hint is not None and intent_hint.intent_name == "driver_standings":
+        conditions.append({"table_name": "driver_standings"})
+
+    if intent_hint is not None and intent_hint.intent_name == "constructor_standings":
+        conditions.append({"table_name": "constructor_standings"})
+
+    if intent_hint is not None and intent_hint.intent_name == "qualifying":
+        conditions.append({"table_name": "qualifying"})
+
+    if intent_hint is not None and intent_hint.intent_name == "sprint_results":
+        conditions.append({"table_name": "sprint_results"})
+
+    if intent_hint is not None and intent_hint.intent_name in {"results", "race_status"}:
+        conditions.append({"table_name": "results"})
 
     driver_entities = [entity for entity in resolved_entities if entity.entity_type == "driver"]
     if len(driver_entities) == 1 and _driver_filter_is_helpful(intent_hint):
@@ -218,6 +248,41 @@ def retrieve_context(
     )
 
 
+def search_local_chunks(
+    query_text: str,
+    top_k: int,
+    metadata_filter: dict[str, Any] | None,
+    intent_hint: SqlIntentHint | None,
+    resolved_entities: list[ResolvedEntity],
+) -> list[RetrievedChunk]:
+    """Recupera candidatos desde el JSONL local cuando hay filtros estructurados fuertes."""
+
+    if not _should_use_local_shortcut(metadata_filter):
+        return []
+
+    documents = _load_local_rag_documents()
+    matched_chunks: list[RetrievedChunk] = []
+    for document in documents:
+        if not _metadata_matches_filter(document.metadata, metadata_filter):
+            continue
+        matched_chunks.append(
+            RetrievedChunk(
+                document_id=document.document_id,
+                text=document.text,
+                metadata=document.metadata,
+                distance=0.0,
+            )
+        )
+
+    reranked_chunks = rerank_retrieved_chunks(
+        chunks=matched_chunks,
+        query_text=query_text,
+        intent_hint=intent_hint,
+        resolved_entities=resolved_entities,
+    )
+    return reranked_chunks[: max(top_k * 2, top_k)]
+
+
 def rerank_retrieved_chunks(
     chunks: list[RetrievedChunk],
     query_text: str,
@@ -242,6 +307,83 @@ def rerank_retrieved_chunks(
     ]
     scored_chunks.sort(key=lambda item: item[0], reverse=True)
     return [chunk for _, chunk in scored_chunks]
+
+
+@lru_cache(maxsize=1)
+def _load_local_rag_documents() -> tuple[RagDocument, ...]:
+    """Carga una sola vez los documentos procesados para atajos de retrieval local."""
+
+    documents_path = Path(__file__).resolve().parents[3] / "data" / "processed" / "rag_documents.jsonl"
+    if not documents_path.exists():
+        return tuple()
+    return tuple(load_documents_from_jsonl(documents_path))
+
+
+def _should_use_local_shortcut(metadata_filter: dict[str, Any] | None) -> bool:
+    """Decide si conviene intentar primero un retrieval local exacto por metadata."""
+
+    if metadata_filter is None:
+        return False
+
+    flattened_keys = _extract_filter_keys(metadata_filter)
+    strong_keys = {
+        "race_name",
+        "season_year",
+        "driver_name",
+        "constructor_name",
+        "circuit_name",
+        "table_name",
+        "position",
+    }
+    return any(key in strong_keys for key in flattened_keys)
+
+
+def _extract_filter_keys(metadata_filter: dict[str, Any]) -> set[str]:
+    """Extrae llaves escalares desde filtros simples o compuestos."""
+
+    keys: set[str] = set()
+    for key, value in metadata_filter.items():
+        if key in {"$and", "$or"} and isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    keys.update(_extract_filter_keys(item))
+            continue
+        keys.add(key)
+    return keys
+
+
+def _metadata_matches_filter(metadata: dict[str, Any], metadata_filter: dict[str, Any] | None) -> bool:
+    """Evalua si un documento cumple un filtro simple derivado del retrieval."""
+
+    if metadata_filter is None:
+        return True
+
+    for key, value in metadata_filter.items():
+        if key == "$and":
+            return all(_metadata_matches_filter(metadata, item) for item in value if isinstance(item, dict))
+        if key == "$or":
+            return any(_metadata_matches_filter(metadata, item) for item in value if isinstance(item, dict))
+        if str(metadata.get(key, "")) != str(value):
+            return False
+    return True
+
+
+def _merge_retrieved_chunks(
+    primary_chunks: list[RetrievedChunk],
+    secondary_chunks: list[RetrievedChunk],
+) -> list[RetrievedChunk]:
+    """Fusiona chunks locales y vectoriales sin duplicar documentos."""
+
+    merged_chunks: list[RetrievedChunk] = []
+    seen_ids: set[str] = set()
+
+    for chunk in primary_chunks + secondary_chunks:
+        if chunk.document_id in seen_ids:
+            continue
+        seen_ids.add(chunk.document_id)
+        merged_chunks.append(chunk)
+
+    return merged_chunks
 
 
 def _query_collection(

@@ -39,7 +39,7 @@ services:
     image: chromadb/chroma:0.5.5
     container_name: thesis-rag-f1-chroma
     ports:
-      - "${CHROMA_PORT:-8000}:8000"
+      - "${CHROMA_HOST_PORT:-18000}:8000"
     volumes:
       - ./storage/chroma:/chroma/chroma
 

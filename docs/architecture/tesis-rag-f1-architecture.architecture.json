@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Flujo hibrido RAG + NL2SQL",
+    "output": "tesis-rag-f1-architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [1160, 650],
+    "views": [
+      {
+        "id": "orden-consulta",
+        "label": "Orden de consulta",
+        "focus": ["usuario", "streamlit", "orquestacion", "nl2sql", "sql_guard", "postgres", "respuesta"],
+        "note": "Despues de NL2SQL, la SQL se valida antes de llegar a PostgreSQL."
+      },
+      {
+        "id": "rag",
+        "label": "RAG",
+        "focus": ["orquestacion", "retrieval", "openai_embeddings", "chroma", "nl2sql"],
+        "note": "El embedding de la pregunta permite recuperar chunks desde Chroma."
+      },
+      {
+        "id": "llm",
+        "label": "LLM",
+        "focus": ["nl2sql", "openai_llm", "respuesta"],
+        "note": "El LLM participa al generar SQL y al redactar la respuesta final."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "usuario",
+      "type": "external",
+      "label": "Usuario",
+      "sublabel": "pregunta en lenguaje natural",
+      "pos": [35, 330],
+      "size": [150, 78]
+    },
+    {
+      "id": "streamlit",
+      "type": "frontend",
+      "label": "Interfaz Streamlit",
+      "sublabel": "muestra SQL, tabla y respuesta",
+      "pos": [230, 330],
+      "size": [180, 78],
+      "tag": ":8501"
+    },
+    {
+      "id": "orquestacion",
+      "type": "backend",
+      "label": "Pipeline hibrido",
+      "sublabel": "coordina RAG, SQL y respuesta",
+      "pos": [455, 330],
+      "size": [185, 78]
+    },
+    {
+      "id": "retrieval",
+      "type": "backend",
+      "label": "Retrieval RAG",
+      "sublabel": "prepara busqueda semantica",
+      "pos": [455, 105],
+      "size": [185, 78]
+    },
+    {
+      "id": "openai_embeddings",
+      "type": "cloud",
+      "label": "OpenAI Embeddings",
+      "sublabel": "vector de la pregunta",
+      "pos": [690, 105],
+      "size": [185, 78]
+    },
+    {
+      "id": "chroma",
+      "type": "database",
+      "label": "Chroma",
+      "sublabel": "recupera chunks similares",
+      "pos": [925, 105],
+      "size": [185, 78]
+    },
+    {
+      "id": "nl2sql",
+      "type": "backend",
+      "label": "NL2SQL",
+      "sublabel": "arma prompt con esquema y RAG",
+      "pos": [690, 330],
+      "size": [185, 78]
+    },
+    {
+      "id": "sql_guard",
+      "type": "security",
+      "label": "Validacion SQL",
+      "sublabel": "permite solo SELECT seguro",
+      "pos": [925, 330],
+      "size": [185, 78]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "ejecuta el SELECT validado",
+      "pos": [925, 540],
+      "size": [185, 78]
+    },
+    {
+      "id": "respuesta",
+      "type": "backend",
+      "label": "Respuesta final",
+      "sublabel": "prepara SQL real + contexto RAG",
+      "pos": [690, 540],
+      "size": [185, 78]
+    },
+    {
+      "id": "openai_llm",
+      "type": "cloud",
+      "label": "OpenAI LLM",
+      "sublabel": "genera SQL y redacta respuesta",
+      "pos": [455, 540],
+      "size": [185, 78]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Aplicacion Python de tesis",
+      "wraps": ["streamlit", "orquestacion", "retrieval", "nl2sql", "sql_guard", "respuesta"],
+      "pad": 28
+    },
+    {
+      "kind": "region",
+      "label": "Servicios persistentes",
+      "wraps": ["chroma", "postgres"],
+      "pad": 24
+    }
+  ],
+  "connections": [
+    {
+      "id": "usuario-streamlit",
+      "from": "usuario",
+      "to": "streamlit",
+      "label": "pregunta",
+      "variant": "emphasis",
+      "labelDy": 42
+    },
+    {
+      "id": "streamlit-orquestacion",
+      "from": "streamlit",
+      "to": "orquestacion",
+      "label": "modo",
+      "variant": "emphasis",
+      "labelDy": 42
+    },
+    {
+      "id": "orquestacion-retrieval",
+      "from": "orquestacion",
+      "to": "retrieval",
+      "label": "pide contexto",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDx": -72
+    },
+    {
+      "id": "retrieval-embeddings",
+      "from": "retrieval",
+      "to": "openai_embeddings",
+      "label": "embedding",
+      "variant": "emphasis",
+      "labelDy": 42
+    },
+    {
+      "id": "embeddings-chroma",
+      "from": "openai_embeddings",
+      "to": "chroma",
+      "label": "vector",
+      "labelDy": 42
+    },
+    {
+      "id": "chroma-nl2sql",
+      "from": "chroma",
+      "to": "nl2sql",
+      "label": "chunks RAG",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "via": [[1017.5, 255], [782.5, 255]],
+      "labelDy": -14
+    },
+    {
+      "id": "orquestacion-nl2sql",
+      "from": "orquestacion",
+      "to": "nl2sql",
+      "label": "contexto",
+      "variant": "emphasis",
+      "labelDy": 42
+    },
+    {
+      "id": "nl2sql-llm",
+      "from": "nl2sql",
+      "to": "openai_llm",
+      "label": "SQL",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "via": [[782.5, 485], [547.5, 485]],
+      "labelDx": -48
+    },
+    {
+      "id": "nl2sql-sqlguard",
+      "from": "nl2sql",
+      "to": "sql_guard",
+      "label": "SQL",
+      "labelDy": 42
+    },
+    {
+      "id": "sqlguard-postgres",
+      "from": "sql_guard",
+      "to": "postgres",
+      "label": "SELECT",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDx": -80,
+      "labelDy": 26
+    },
+    {
+      "id": "postgres-respuesta",
+      "from": "postgres",
+      "to": "respuesta",
+      "label": "filas",
+      "fromSide": "left",
+      "toSide": "right",
+      "labelDy": 44
+    },
+    {
+      "id": "respuesta-llm",
+      "from": "respuesta",
+      "to": "openai_llm",
+      "label": "redaccion",
+      "variant": "emphasis",
+      "labelDy": 44
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Despues de NL2SQL",
+      "items": [
+        "NL2SQL usa el LLM para obtener una SQL candidata.",
+        "La validacion ocurre antes de consultar PostgreSQL.",
+        "PostgreSQL solo ejecuta el SELECT validado."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "RAG y embeddings",
+      "items": [
+        "Primero se genera el embedding de la pregunta.",
+        "Chroma usa ese vector para traer chunks relevantes.",
+        "Los chunks ayudan a NL2SQL y a la respuesta final."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Respuesta con LLM",
+      "items": [
+        "PostgreSQL entrega datos, no redacta la respuesta.",
+        "La respuesta final llama al LLM con filas reales y contexto RAG.",
+        "Streamlit muestra la evidencia junto a la respuesta."
+      ]
+    }
+  ]
+}

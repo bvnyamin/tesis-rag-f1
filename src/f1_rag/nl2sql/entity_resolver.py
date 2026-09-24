@@ -171,17 +171,23 @@ def _matches_entity(normalized_question: str, entity: ResolvedEntity) -> bool:
 
     normalized_display = _normalize_text(entity.display_name)
     normalized_canonical = _normalize_text(entity.canonical_value)
+    question_tokens = set(normalized_question.split())
 
     display_tokens = _significant_tokens(normalized_display)
-    if display_tokens and all(token in normalized_question for token in display_tokens):
+    if display_tokens and all(token in question_tokens for token in display_tokens):
         return True
 
-    if normalized_canonical and normalized_canonical in normalized_question:
+    canonical_tokens = _significant_tokens(normalized_canonical)
+    if canonical_tokens and all(token in question_tokens for token in canonical_tokens):
+        return True
+
+    # Para referencias cortas como "RE" o "IDE", exigimos coincidencia exacta como token.
+    if normalized_canonical and normalized_canonical in question_tokens:
         return True
 
     if entity.entity_type == "race":
         race_tokens = [token for token in display_tokens if token not in {"grand", "prix"}]
-        if race_tokens and all(token in normalized_question for token in race_tokens):
+        if race_tokens and all(token in question_tokens for token in race_tokens):
             return True
 
     return False

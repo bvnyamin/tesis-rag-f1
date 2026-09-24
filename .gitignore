@@ -26,3 +26,5 @@ storage/postgres/*
 
 .DS_Store
 Thumbs.db
+
+docs/architecture/*.visual-check.*

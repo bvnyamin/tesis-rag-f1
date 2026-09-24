@@ -1,7 +1,11 @@
-# Tesis RAG F1
+# Estudio de Retrieval-Augmented Generation para consultas en lenguaje natural sobre datos estructurados
 
-Prototipo de tesis para explorar un enfoque hibrido sobre datos estructurados de
-Formula 1:
+Proyecto de titulo para optar al titulo de Ingeniero en Informatica.
+
+**Autores:** Nicolas Villagran y Nicolas Veliz.
+
+El prototipo estudia consultas en lenguaje natural sobre datos estructurados de
+Formula 1 mediante:
 
 - RAG semantico con Chroma
 - consultas estructuradas con PostgreSQL
@@ -17,7 +21,8 @@ Este proyecto busca responder preguntas sobre Formula 1 combinando dos caminos:
 - **camino estructurado**: cargar tablas clave en PostgreSQL y responder preguntas
   exactas mediante SQL
 
-El sistema final mezcla ambos enfoques en un pipeline hibrido.
+El sistema implementa ese pipeline hibrido y dos modos de comparacion para
+observar el aporte de cada componente.
 
 ## Tecnologias principales
 
@@ -87,6 +92,7 @@ Las variables mas importantes del proyecto son:
 - `OPENAI_EMBEDDING_MODEL`
 - `CHROMA_HOST`
 - `CHROMA_PORT`
+- `CHROMA_HOST_PORT` (puerto externo; por defecto `18000`)
 - `CHROMA_COLLECTION`
 - `POSTGRES_HOST`
 - `POSTGRES_PORT`
@@ -197,7 +203,8 @@ Para uso normal diario:
 docker compose up -d
 ```
 
-Usar `--build` solo si cambiaste codigo o dependencias:
+El codigo fuente esta montado en el contenedor. Si cambias dependencias o la
+imagen, reconstruye:
 
 ```text
 docker compose up --build -d
@@ -288,26 +295,63 @@ Para ejecutar solo un caso:
 docker compose exec app python scripts/run_benchmark.py --case-id pole_australia_2008
 ```
 
+## Modos de ejecucion
+
+La interfaz permite elegir entre:
+
+| Modo | Componentes activos | Salida |
+|---|---|---|
+| Hibrido completo | RAG en Chroma, generacion de SQL, PostgreSQL y LLM | Evidencia, analisis, grafico cuando aporta y respuesta final |
+| SQL sin RAG | Generacion de SQL y PostgreSQL | SQL y resultado tabular sin interpretacion final |
+| LLM puro | Modelo de lenguaje | Respuesta directa sin consulta al dataset |
+
+Los modos de comparacion tienen alcances distintos. Una respuesta del LLM puro
+no verifica sus datos contra PostgreSQL; el modo SQL sin RAG si consulta la base,
+pero no recupera contexto desde Chroma.
+
 ## Como funciona la interfaz
 
 La app muestra varias capas del proceso porque este proyecto esta pensado como
 prototipo de tesis y no solo como una app cerrada:
 
-- **Respuesta final**: salida en lenguaje natural para el usuario
 - **SQL generada**: consulta estructurada construida por el sistema
-- **Contexto recuperado**: evidencia semantica recuperada desde Chroma
 - **Resultado tabular**: evidencia exacta devuelta por PostgreSQL
+- **Contexto recuperado**: fragmentos semanticos y fuentes de Chroma
+- **Resumen y visualizacion**: analisis derivado del resultado, cuando es util
+- **Respuesta final**: salida en lenguaje natural para el usuario
 
-Esto permite trazabilidad y explicabilidad del enfoque hibrido.
+Las etapas muestran su avance y los resultados se despliegan por secciones.
+Esto permite seguir la evidencia del enfoque hibrido sin mostrarla toda de una vez.
 
 ## Flujo interno del sistema
 
-1. la app recibe una pregunta
-2. se recuperan chunks relevantes desde Chroma
-3. el sistema usa ese contexto para ayudar a generar SQL
-4. la SQL se valida
+1. la app recibe la pregunta y valida dominio e instrucciones inseguras
+2. en modo hibrido, recupera fragmentos relevantes desde Chroma
+3. el LLM genera SQL apoyado en el esquema y, si corresponde, en el contexto RAG
+4. la SQL se valida como consulta de solo lectura
 5. la SQL se ejecuta en PostgreSQL
-6. el resultado tabular y el contexto RAG se usan para construir la respuesta final
+6. en modo hibrido, se construyen el reporte y la respuesta final con evidencia
+
+Las peticiones de modificacion de datos o esquema y los intentos de inyeccion
+se rechazan antes de ejecutar SQL. Las preguntas ajenas a Formula 1 se avisan
+o rechazan segun la validacion de dominio.
+
+## Evaluacion
+
+El plan de pruebas incluye 42 preguntas agrupadas en cinco categorias:
+recuperacion simple, agregacion y calculo, relaciones complejas, comparativas
+con visualizacion, y seguridad y limites. La muestra principal de 24 casos
+esta en `benchmarks/thesis_benchmark_selected_24.json`.
+
+Para ejecutar un caso de la muestra:
+
+```text
+docker compose exec app python scripts/run_benchmark.py --cases-path benchmarks/thesis_benchmark_selected_24.json --case-id D-02
+```
+
+El benchmark produce un reporte JSON y una plantilla CSV de revision manual en
+`data/processed/`. Los resultados automaticos no sustituyen la evaluacion
+cualitativa de respuestas y graficos.
 
 ## Persistencia de datos
 
@@ -364,7 +408,8 @@ archivo `rag_documents.jsonl`.
 
 ### La app no refleja cambios de codigo
 
-Reconstruir:
+Recarga la pagina o reinicia `app`. Si cambiaste dependencias o el Dockerfile,
+reconstruye:
 
 ```text
 docker compose up --build -d
@@ -406,6 +451,8 @@ docker builder prune
 - `docs/minimal_pipeline_examples.md`
 - `docs/f1_chunk_examples.md`
 - `docs/benchmark_evaluation.md`
+- `docs/selected_benchmark_samples.md`
+- `docs/architecture/tesis-rag-f1-architecture.html`
 
 ## Estado actual
 
@@ -420,4 +467,8 @@ Actualmente el proyecto ya incluye:
 - validacion y ejecucion de SQL segura
 - generacion de SQL con apoyo de RAG
 - pipeline hibrido completo
-- interfaz Streamlit conectada al backend
+- modos SQL sin RAG y LLM puro para comparacion
+- filtros de dominio y seguridad para consultas de solo lectura
+- resumen analitico y graficos para resultados adecuados
+- interfaz Streamlit con progreso y secciones desplegables
+- benchmark documentado y evidencias de la implementacion
